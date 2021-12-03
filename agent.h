@@ -70,9 +70,9 @@ protected:
  * random player for both side
  * put a legal piece randomly
  */
-class player : public random_agent {
+class random_player : public random_agent {
 public:
-	player(const std::string& args = "") : random_agent("name=random role=unknown " + args),
+	random_player(const std::string& args = "") : random_agent("name=random role=unknown " + args),
 		space(board::size_x * board::size_y), who(board::empty) {
 		if (name().find_first_of("[]():; ") != std::string::npos)
 			throw std::invalid_argument("invalid name: " + name());
@@ -97,4 +97,121 @@ public:
 private:
 	std::vector<action::place> space;
 	board::piece_type who;
+};
+
+
+class mtcs_player : public random_agent {
+public:
+	mtcs_player(const std::string& args = "") : random_agent("name=random role=unknown " + args),
+		space(board::size_x * board::size_y),space_opponent(board::size_x * board::size_y), who(board::empty) {
+		if (name().find_first_of("[]():; ") != std::string::npos)
+			throw std::invalid_argument("invalid name: " + name());
+		if (role() == "black"){
+			who = board::black;
+			opponent = board::white;
+		}
+		if (role() == "white"){
+			who = board::white;
+			opponent = board::black;
+		}
+		if (who == board::empty)
+			throw std::invalid_argument("invalid role: " + role());
+		for (size_t i = 0; i < space.size(); i++){
+			space[i] = action::place(i, who);
+			space_opponent[i] = action::place(i, opponent);
+		}
+	}
+
+	static int myrandom (int i) { return std::rand()%i;}
+
+	bool simulation(const board& now,board::piece_type a){
+		bool ch=true;
+		board next=now;
+		int stat;
+		if(a==who) stat=1;
+		else stat=0;
+		std::srand(time(0));
+		std::random_shuffle(space.begin(),space.end(),myrandom);
+		std::random_shuffle(space_opponent.begin(),space_opponent.end(),myrandom);
+		for(int i=1;i<=74;i++){
+			if(i%2){
+				if(stat){
+					for (const action::place& move : space) {
+						board ne=next;
+						if (move.apply(ne) == board::legal){
+							next=ne;
+							goto L_nextround;
+						}
+					}
+					ch=false;
+					break;
+				}
+				else{
+					for (const action::place& move : space_opponent) {
+						board ne=next;
+						if (move.apply(ne) == board::legal){
+							next=ne;
+							goto L_nextround;
+						}
+					}
+					ch=true;
+					break;
+				}
+			}
+			else{
+				if(stat){
+					for (const action::place& move : space_opponent) {
+						board ne=next;
+						if (move.apply(ne) == board::legal){
+							next=ne;
+							goto L_nextround;
+						}
+					}
+					ch=true;
+					break;
+				}
+				else{
+					for (const action::place& move : space) {
+						board ne=next;
+						if (move.apply(ne) == board::legal){
+							next=ne;
+							goto L_nextround;
+						}
+					}
+					ch=false;
+					break;
+				}
+			}
+			L_nextround:;
+		}
+		return ch;
+	}
+
+	virtual action take_action(const board& state) {
+		
+		int cnt=0;
+		for(int i=0;i<1000;i++){
+			if(simulation(state,who)) cnt++;
+		}
+		std::cout << cnt << '\n';
+			
+		/*
+		std::shuffle(space.begin(), space.end(), engine);
+		for (const action::place& move : space) {
+			board after = state;
+			if (move.apply(after) == board::legal){
+				
+				return move;
+			}
+
+		}
+		*/
+		return action();
+	}
+
+private:
+	std::vector<action::place> space;
+	std::vector<action::place> space_opponent;
+	board::piece_type who;
+	board::piece_type opponent;
 };
