@@ -118,7 +118,9 @@ public:
 			throw std::invalid_argument("invalid role: " + role());
 		for (size_t i = 0; i < space.size(); i++){
 			space[i] = action::place(i, who);
+			space1.push_back(action::place(i,who));
 			space_opponent[i] = action::place(i, opponent);
+			space_opponent1.push_back(action::place(i,opponent));
 		}
 	}
 
@@ -131,12 +133,13 @@ public:
 		if(a==who) stat=1;
 		else stat=0;
 		std::srand(time(0));
-		std::random_shuffle(space.begin(),space.end(),myrandom);
-		std::random_shuffle(space_opponent.begin(),space_opponent.end(),myrandom);
+		std::random_shuffle(space1.begin(),space1.end(),myrandom);
+		std::random_shuffle(space_opponent1.begin(),space_opponent1.end(),myrandom);
+		
 		for(int i=1;i<=74;i++){
 			if(i%2){
 				if(stat){
-					for (const action::place& move : space) {
+					for (const action::place& move : space1) {
 						board ne=next;
 						if (move.apply(ne) == board::legal){
 							next=ne;
@@ -147,7 +150,7 @@ public:
 					break;
 				}
 				else{
-					for (const action::place& move : space_opponent) {
+					for (const action::place& move : space_opponent1) {
 						board ne=next;
 						if (move.apply(ne) == board::legal){
 							next=ne;
@@ -160,7 +163,7 @@ public:
 			}
 			else{
 				if(stat){
-					for (const action::place& move : space_opponent) {
+					for (const action::place& move : space_opponent1) {
 						board ne=next;
 						if (move.apply(ne) == board::legal){
 							next=ne;
@@ -171,7 +174,7 @@ public:
 					break;
 				}
 				else{
-					for (const action::place& move : space) {
+					for (const action::place& move : space1) {
 						board ne=next;
 						if (move.apply(ne) == board::legal){
 							next=ne;
@@ -189,29 +192,42 @@ public:
 
 	virtual action take_action(const board& state) {
 		
+		/*
 		int cnt=0;
 		for(int i=0;i<1000;i++){
 			if(simulation(state,who)) cnt++;
 		}
 		std::cout << cnt << '\n';
-			
-		/*
+		*/	
+		action::place best_move;
+		
+		int best_cnt=0;
+		board check;
 		std::shuffle(space.begin(), space.end(), engine);
 		for (const action::place& move : space) {
 			board after = state;
 			if (move.apply(after) == board::legal){
-				
-				return move;
+				int cnt=0;
+				for(int i=0;i<10;i++) if(simulation(after,opponent)) cnt++;
+				if(cnt>best_cnt){
+					best_cnt=cnt;
+					best_move=move;
+					check=after;
+				}
 			}
 
 		}
-		*/
-		return action();
+		//std::cout << check << '\n';
+		//std::cout << best_move << " " << best_cnt << '\n';
+		//std::cout << "_______________" << '\n';
+		return best_move;
 	}
 
 private:
 	std::vector<action::place> space;
 	std::vector<action::place> space_opponent;
+	std::vector<action::place> space1;
+	std::vector<action::place> space_opponent1;
 	board::piece_type who;
 	board::piece_type opponent;
 };
