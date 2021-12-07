@@ -136,12 +136,16 @@ public:
 		std::random_shuffle(space1.begin(),space1.end(),myrandom);
 		std::random_shuffle(space_opponent1.begin(),space_opponent1.end(),myrandom);
 		
+		std::vector<action::place> rem;
+
 		for(int i=1;i<=74;i++){
 			if(i%2){
 				if(stat){
 					for (const action::place& move : space1) {
 						board ne=next;
 						if (move.apply(ne) == board::legal){
+							rem.push_back(move);
+							node_state[move].second++;
 							next=ne;
 							goto L_nextround;
 						}
@@ -177,6 +181,8 @@ public:
 					for (const action::place& move : space1) {
 						board ne=next;
 						if (move.apply(ne) == board::legal){
+							rem.push_back(move);
+							node_state[move].second++;
 							next=ne;
 							goto L_nextround;
 						}
@@ -187,10 +193,41 @@ public:
 			}
 			L_nextround:;
 		}
+		
+		if(ch){
+			for(auto it:rem) node_state[it].first++;
+		}
+		
 		return ch;
 	}
 
 	virtual action take_action(const board& state) {
+		//std::cout << state << '\n';
+		std::shuffle(space.begin(), space.end(), engine);
+		std::shuffle(space_opponent.begin(),space_opponent.end(),engine);
+		node_state.clear();
+		for(auto it:space) node_state[it]=std::make_pair(0,0);
+
+		for (const action::place& move : space) {
+			board after = state;
+			if (move.apply(after) == board::legal){
+				for(int i=0;i<10;i++) {
+					node_state[move].second++;
+					if(simulation(after,opponent)) node_state[move].first++;
+				}
+			}
+		}
+		action::place best_move;
+		float best_win_rate=0;
+		for(auto it:node_state){
+			//std::cout << it.first << " " << it.second.first << " " << it.second.second << '\n';
+			if(it.second.second!=0&&(float)it.second.first/it.second.second>best_win_rate){
+				best_move=it.first;
+				best_win_rate=(float)it.second.first/it.second.second;
+			}
+		}
+		//std::cout << best_win_rate << " " << best_move << '\n';
+		//std::cout << '\n' << '\n';
 		
 		/*
 		int cnt=0;
@@ -198,11 +235,10 @@ public:
 			if(simulation(state,who)) cnt++;
 		}
 		std::cout << cnt << '\n';
-		*/	
-		action::place best_move;
-		
+		*/
+		/*	
+		action::place best_move;		
 		int best_cnt=0;
-		board check;
 		std::shuffle(space.begin(), space.end(), engine);
 		for (const action::place& move : space) {
 			board after = state;
@@ -212,11 +248,10 @@ public:
 				if(cnt>best_cnt){
 					best_cnt=cnt;
 					best_move=move;
-					check=after;
 				}
 			}
-
 		}
+		*/
 		//std::cout << check << '\n';
 		//std::cout << best_move << " " << best_cnt << '\n';
 		//std::cout << "_______________" << '\n';
@@ -230,4 +265,5 @@ private:
 	std::vector<action::place> space_opponent1;
 	board::piece_type who;
 	board::piece_type opponent;
+	std::map<action::place,std::pair<int,int>> node_state;
 };
