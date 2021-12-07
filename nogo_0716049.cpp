@@ -63,8 +63,8 @@ int main(int argc, const char* argv[]) {
 		summary |= stat.is_finished();
 	}
 
-	mtcs_player black("name=black " + black_args + " role=black");
-	mtcs_player white("name=white " + white_args + " role=white");
+	mtcs_uct_player black("name=black " + black_args + " role=black");
+	mtcs_with_sample_rave_player white("name=white " + white_args + " role=white");
 
 	if (!shell) { // launch standard local games
 		while (!stat.is_finished()) {
