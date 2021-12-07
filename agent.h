@@ -207,7 +207,7 @@ public:
 		for (const action::place& move : space) {
 			board after = state;
 			if (move.apply(after) == board::legal){
-				for(int i=0;i<10;i++) {
+				for(int i=0;i<30;i++) {
 					node_state[move].second++;
 					if(simulation(after,opponent)) node_state[move].first++;
 				}
@@ -236,9 +236,9 @@ private:
 
 
 
-class mtcs_uct_player : public random_agent {
+class mtcs_uct_rave_player : public random_agent {
 public:
-	mtcs_uct_player(const std::string& args = "") : random_agent("name=random role=unknown " + args),
+	mtcs_uct_rave_player(const std::string& args = "") : random_agent("name=random role=unknown " + args),
 		space(board::size_x * board::size_y),space_opponent(board::size_x * board::size_y), who(board::empty) {
 		if (name().find_first_of("[]():; ") != std::string::npos)
 			throw std::invalid_argument("invalid name: " + name());
@@ -336,12 +336,12 @@ public:
 	}
 
 	struct tree_node{
-		action::place pos;
 		tree_node* next[100]={nullptr};
 		int win_cnt=0;
 		int game_cnt=0;
 		board b;
 		board::piece_type w;
+		action::place pos;
 		tree_node(board b,board::piece_type w):b(b),w(w){}
 		tree_node(board b,board::piece_type w,action::place pos):b(b),w(w),pos(pos){}
 		bool is_leaf(){
@@ -368,6 +368,7 @@ public:
 	void update(){
 		std::queue<tree_node *> q;
 		tree_node *now=root;
+		bool not_end=true;
 		if(now){
 			// find leaf
 			q.push(now);
@@ -375,10 +376,12 @@ public:
 				float score=0;
 				float max_score=0;
 				int max_ind=0;
+				not_end=false;
 				for(int i=0;i<100;i++){
 					if(now->next[i]){
 						board t=now->b;
 						if(now->next[i]->pos.apply(t)==board::legal){
+							not_end=true;
 							//std::cout << now->next[i]->pos << '\n';
 							if(now->next[i]->game_cnt==0) score=100000;
 							else score= (float)now->next[i]->win_cnt/now->next[i]->game_cnt + sqrt(log(now->game_cnt)/now->next[i]->game_cnt);
@@ -388,55 +391,67 @@ public:
 								max_score=score;
 								max_ind=i;
 							}
-							
 						}
-						
 					}
 				}
-				now=now->next[max_ind];
-				q.push(now);
+				if(not_end){
+					now=now->next[max_ind];
+					q.push(now);
+				}
+				else break;
 			}
 
 			// expension
-			if(now->w==who){
-				int i=0;
-				for(auto it:space){
-					board b_now=now->b;
-					it.apply(b_now);
-					now->next[i]=new tree_node(b_now,opponent,it);
-					i++;
+			if(not_end){
+				if(now->w==who){
+					int i=0;
+					for(auto it:space){
+						board b_now=now->b;
+						it.apply(b_now);
+						now->next[i]=new tree_node(b_now,opponent,it);
+						i++;
+					}
 				}
-			}
-			else{
-				int i=0;
-				for(auto it:space_opponent){
-					board b_now=now->b;
-					it.apply(b_now);
-					now->next[i]=new tree_node(b_now,who,it);
-					i++;
-				}
-			}
-			
-			// simulation
-			bool win=false;
-			for(int i=0;i<100;i++){
-				board t=now->b;
-				if(now->next[i]){
-					if(now->next[i]->pos.apply(t)==board::legal){
-						now=now->next[i];
-						q.push(now);
-						win=simulation(now->b,now->w);
-						break;
+				else{
+					int i=0;
+					for(auto it:space_opponent){
+						board b_now=now->b;
+						it.apply(b_now);
+						now->next[i]=new tree_node(b_now,who,it);
+						i++;
 					}
 				}
 			}
 
+			// simulation
+			bool win=false;
+			if(not_end){
+				for(int i=0;i<100;i++){
+					board t=now->b;
+					if(now->next[i]){
+						if(now->next[i]->pos.apply(t)==board::legal){
+							now=now->next[i];
+							q.push(now);
+							win=simulation(now->b,now->w);
+							break;
+						}
+					}
+				}
+			}
+			else{
+				q.push(now);
+				win=simulation(now->b,now->w);
+			}
 			// propagation back
 			while(q.size()!=0){
 				tree_node* now=q.front();
 				q.pop();
+				node_state[now->pos].second++;
 				now->game_cnt++;
-				if(win) now->win_cnt++;
+				if(win){
+					node_state[now->pos].first++;
+					now->win_cnt++;
+				}
 			}
 
 		}
@@ -472,41 +487,43 @@ public:
 		//std::cout << state << '\n';
 		std::shuffle(space.begin(), space.end(), engine);
 		std::shuffle(space_opponent.begin(),space_opponent.end(),engine);
+
 		node_state.clear();
 		for(auto it:space) node_state[it]=std::make_pair(0,0);
 
 		action::place best_move;		
-		int best_cnt=0;
 		
 		init(state,who);
-		for(int i=0;i<1000;i++) update();
+		for(int i=0;i<time_control;i++) update();
+		if(time_control<600) time_control+=30;
+		else time_control-=20;
 		//dump_root();
 		
 		float best_win_rate=0;
-		int best_move_ind=0;
 		for(int i=0;i<100;i++){ 
 			board t=root->b;
 			if(root->next[i]&&root->next[i]->pos.apply(t)==board::legal){
+				//std::cout << root->next[i]->pos << " " <<  node_state[root->next[i]->pos].first << " " << node_state[root->next[i]->pos].second << '\n';
+				
+				if(node_state[root->next[i]->pos].second!=0){
+					if((float)node_state[root->next[i]->pos].first/node_state[root->next[i]->pos].second>best_win_rate){
+						best_win_rate=(float)node_state[root->next[i]->pos].first/node_state[root->next[i]->pos].second;
+						best_move=root->next[i]->pos;
+					}
+				}
+				
+				/*
 				if((float)root->next[i]->win_cnt/root->next[i]->game_cnt>best_win_rate){
 					best_win_rate=(float)root->next[i]->win_cnt/root->next[i]->game_cnt;
-					best_move_ind=i;
+					best_move=root->next[i]->pos;
 				}
+				*/	
 			}
 		}
-		best_move=root->next[best_move_ind]->pos;
-		/*
-		for (const action::place& move : space) {
-			board after = state;
-			if (move.apply(after) == board::legal){
-				int cnt=0;
-				for(int i=0;i<5;i++) if(simulation(after,opponent)) cnt++;
-				if(cnt>best_cnt){
-					best_cnt=cnt;
-					best_move=move;
-				}
-			}
-		}
-		*/
+		
+		//std::cout << best_move << " " << best_win_rate << '\n';
+		//std::cout << '\n';
+
 		return best_move;
 	}
 
@@ -519,5 +536,7 @@ private:
 	board::piece_type opponent;
 	std::map<action::place,std::pair<int,int>> node_state;
 	tree_node *root=nullptr;
+
+	int time_control=10;
 };
 
