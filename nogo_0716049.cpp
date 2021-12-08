@@ -63,8 +63,9 @@ int main(int argc, const char* argv[]) {
 		summary |= stat.is_finished();
 	}
 
-	mtcs_uct_rave_player black("name=black " + black_args + " role=black");
-	mtcs_uct_rave_player white("name=white " + white_args + " role=white");
+	mtcs_uct_rave_pn_player black("name=black " + black_args + " role=black");
+	random_player white("name=white " + white_args + " role=white");
+	//mtcs_uct_rave_player white("name=white " + white_args + " role=white");
 	//mtcs_with_sample_rave_player black("name=black " + black_args + " role=black");
 	//mtcs_with_sample_rave_player white("name=white " + white_args + " role=white");
 	//mtcs_uct_rave_player white("name=white " + white_args + " role=white");
