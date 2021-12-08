@@ -483,6 +483,10 @@ public:
 		*/
 	}
 
+	virtual void open_episode(const std::string& flag = "") {
+		time_control=10;
+	}
+
 	virtual action take_action(const board& state) {
 		//std::cout << state << '\n';
 		std::shuffle(space.begin(), space.end(), engine);
@@ -648,8 +652,8 @@ public:
 		board b;
 		board::piece_type w;
 		action::place pos;
-		int pn_num;
-		int dn_num;
+		int pn_num=1000;
+		int dn_num=1000;
 		tree_node(){}
 		tree_node(board b,board::piece_type w):b(b),w(w){}
 		tree_node(board b,board::piece_type w,action::place pos):b(b),w(w),pos(pos){}
@@ -773,47 +777,31 @@ public:
 		int p,d;
 		if(now->w==who){
 			int i=0;
-			for(auto it:space){
-				board b_now=now->b;
-				it.apply(b_now);
-				now->next[i]=new tree_node(b_now,opponent,it);
-				i++;
-			}	
 			p=0x3f3f3f3f;
 			d=0;
-			for(int i=0;i<100;i++){
-				if(now->next[i]){
-					board t=now->b;
-					if(now->next[i]->pos.apply(t)==board::legal){
-						std::cout << t << '\n';
-						std::cout << now->next[i]->pos << '\n';
-						tree_node r=pn_dfs(now->next[i]);
-						p=std::min(p,r.pn_num);
-						d+=r.dn_num;
-					}
+			for(auto it:space){
+				board b_now=now->b;
+				if(it.apply(b_now)==board::legal){
+					now->next[i]=new tree_node(b_now,opponent,it);
+					tree_node r=pn_dfs(now->next[i]);
+					i++;
+					p=std::min(p,r.pn_num);
+					d=std::max(d,d+r.dn_num);
 				}
-			}	
+			}		
 		}
 		else{
 			int i=0;
-			for(auto it:space_opponent){
-				board b_now=now->b;
-				it.apply(b_now);
-				now->next[i]=new tree_node(b_now,who,it);
-				i++;
-			}
 			p=0;
 			d=0x3f3f3f3f;
-			for(int i=0;i<100;i++){
-				if(now->next[i]){
-					board t=now->b;
-					if(now->next[i]->pos.apply(t)==board::legal){
-						std::cout << t << '\n';
-						std::cout << now->next[i]->pos << '\n';
-						tree_node r=pn_dfs(now->next[i]);
-						p+=r.pn_num;
-						d=std::min(d,r.dn_num);
-					}
+			for(auto it:space_opponent){
+				board b_now=now->b;
+				if(it.apply(b_now)==board::legal){
+					now->next[i]=new tree_node(b_now,who,it);
+					tree_node r=pn_dfs(now->next[i]);
+					i++;
+					p=std::max(p,p+r.pn_num);
+					d=std::min(d,r.dn_num);
 				}
 			}
 		}
@@ -855,6 +843,13 @@ public:
 		*/
 	}
 
+	virtual void open_episode(const std::string& flag = "") {
+		step_cnt=0;
+		use_pns_threshold=0x3f3f3f3f;
+		use_pns_threshold_opponent=0x3f3f3f3f;
+		time_control=10;
+	}
+
 	virtual action take_action(const board& state) {
 		//std::cout << state << '\n';
 		std::shuffle(space.begin(), space.end(), engine);
@@ -867,15 +862,28 @@ public:
 		
 		init(state,who);
 		step_cnt++;
-		if(step_cnt<=35){
+		//std::cout << use_pns_threshold << '\n';
+		//std::cout << use_pns_threshold_opponent << '\n';
+		if(step_cnt<=40&&!(use_pns_threshold<9&&use_pns_threshold_opponent<12)){
+			use_pns_threshold=0;
 			for(int i=0;i<time_control;i++) update();
-			if(time_control<600) time_control+=30;
-			else time_control-=20;
+			if(time_control<3000) time_control+=400;
+			else time_control-=100;
 			//dump_root();
 			float best_win_rate=0;
+			bool cal_opponent=true;
 			for(int i=0;i<100;i++){ 
 				board t=root->b;
 				if(root->next[i]&&root->next[i]->pos.apply(t)==board::legal){
+					use_pns_threshold++;
+					if(cal_opponent){
+						use_pns_threshold_opponent=0;
+						for(auto it:space_opponent){
+							board test=t;
+							if(it.apply(test)==board::legal) use_pns_threshold_opponent++;
+						}
+						cal_opponent=false;
+					}
 					//std::cout << root->next[i]->pos << " " <<  node_state[root->next[i]->pos].first << " " << node_state[root->next[i]->pos].second << '\n';
 					if(node_state[root->next[i]->pos].second!=0){
 						if((float)node_state[root->next[i]->pos].first/node_state[root->next[i]->pos].second>best_win_rate){
@@ -891,14 +899,29 @@ public:
 					*/	
 				}
 			}
-			if(step_cnt<36){
+			/*
+			if(step_cnt>27){
 				std::cout << 123 << '\n';
+				init(state,who);
 				pn_search();
 				std::cout << root->pn_num << '\n';
 			}
+			*/
 		}
 		else{
 			pn_search();
+			std::cout << "pn_num: " << root->pn_num << '\n';
+			for(int i=0;i<100;i++){
+				board t=root->b;
+				if(root->next[i]&&root->next[i]->pos.apply(t)==board::legal){
+					if(root->next[i]->pn_num==0){
+						std::cout << "has_ans" << '\n';
+						best_move=root->next[i]->pos;
+						break;
+					}
+					else{best_move=root->next[i]->pos;}
+				}
+			}
 		}
 		return best_move;
 	}
@@ -913,7 +936,9 @@ private:
 	std::map<action::place,std::pair<int,int>> node_state;
 	tree_node *root=nullptr;
 
-	int time_control=10;
+	int use_pns_threshold=0x3f3f3f3f;
+	int use_pns_threshold_opponent=0x3f3f3f3f;
+	int time_control=400;
 	int step_cnt=0;
 };
 

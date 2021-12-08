@@ -64,7 +64,7 @@ int main(int argc, const char* argv[]) {
 	}
 
 	mtcs_uct_rave_pn_player black("name=black " + black_args + " role=black");
-	random_player white("name=white " + white_args + " role=white");
+	mtcs_uct_rave_player white("name=white " + white_args + " role=white");
 	//mtcs_uct_rave_player white("name=white " + white_args + " role=white");
 	//mtcs_with_sample_rave_player black("name=black " + black_args + " role=black");
 	//mtcs_with_sample_rave_player white("name=white " + white_args + " role=white");
@@ -80,12 +80,13 @@ int main(int argc, const char* argv[]) {
 			while (true) {
 				agent& who = game.take_turns(black, white);
 				action move = who.take_action(game.state());
+				//std::cout << move << '\n';
 				if (game.apply_action(move) != true) break;
 				if (who.check_for_win(game.state())) break;
 			}
 			agent& win = game.last_turns(black, white);
 			stat.close_episode(win.name());
-
+			std::cout << "finish one game" << '\n';
 			black.close_episode(win.name());
 			white.close_episode(win.name());
 		}
