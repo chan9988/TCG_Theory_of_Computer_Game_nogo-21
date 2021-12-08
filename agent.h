@@ -787,6 +787,7 @@ public:
 					i++;
 					p=std::min(p,r.pn_num);
 					d=std::max(d,d+r.dn_num);
+					if(p==0||d==0x3f3f3f3f) break;
 				}
 			}		
 		}
@@ -802,6 +803,7 @@ public:
 					i++;
 					p=std::max(p,p+r.pn_num);
 					d=std::min(d,r.dn_num);
+					if(p==0x3f3f3f3f||d==0) break;
 				}
 			}
 		}
@@ -864,7 +866,7 @@ public:
 		step_cnt++;
 		//std::cout << use_pns_threshold << '\n';
 		//std::cout << use_pns_threshold_opponent << '\n';
-		if(step_cnt<=40&&!(use_pns_threshold<9&&use_pns_threshold_opponent<12)){
+		if(step_cnt<=40&&!(use_pns_threshold<12&&use_pns_threshold_opponent<15)){
 			use_pns_threshold=0;
 			for(int i=0;i<time_control;i++) update();
 			if(time_control<3000) time_control+=400;
