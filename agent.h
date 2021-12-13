@@ -849,7 +849,8 @@ public:
 		step_cnt=0;
 		use_pns_threshold=0x3f3f3f3f;
 		use_pns_threshold_opponent=0x3f3f3f3f;
-		time_control=10;
+		time_control=500;
+		down=false;
 	}
 
 	virtual action take_action(const board& state) {
@@ -869,8 +870,11 @@ public:
 		if(step_cnt<=40&&!(use_pns_threshold<12&&use_pns_threshold_opponent<15)){
 			use_pns_threshold=0;
 			for(int i=0;i<time_control;i++) update();
-			if(time_control<3000) time_control+=400;
-			else time_control-=100;
+			if(down==false&&time_control<5000) time_control+=500;
+			else{
+				down=true;
+				time_control-=200;
+			}
 			//dump_root();
 			float best_win_rate=0;
 			bool cal_opponent=true;
@@ -940,8 +944,9 @@ private:
 
 	int use_pns_threshold=0x3f3f3f3f;
 	int use_pns_threshold_opponent=0x3f3f3f3f;
-	int time_control=400;
+	int time_control=500;
 	int step_cnt=0;
+	bool down=false;
 };
 
 class mtcs_uct_player : public random_agent {
@@ -1248,7 +1253,7 @@ public:
 		step_cnt=0;
 		use_pns_threshold=0x3f3f3f3f;
 		use_pns_threshold_opponent=0x3f3f3f3f;
-		time_control=100;
+		time_control=1000;
 	}
 
 	virtual action take_action(const board& state) {
@@ -1294,12 +1299,12 @@ public:
 						}
 					}
 					*/
-
+					
 					if((float)root->next[i]->win_cnt/root->next[i]->game_cnt>best_win_rate){
 						best_win_rate=(float)root->next[i]->win_cnt/root->next[i]->game_cnt;
 						best_move=root->next[i]->pos;
 					}
-						
+					
 				}
 			}
 			/*
