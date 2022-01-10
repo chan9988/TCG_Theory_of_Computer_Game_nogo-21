@@ -1443,17 +1443,12 @@ public:
 		step_cnt=0;
 		use_pns_threshold=0x3f3f3f3f;
 		use_pns_threshold_opponent=0x3f3f3f3f;
-		time_control=500;
-		down=false;
 	}
 
 	virtual action take_action(const board& state) {
 
 		std::shuffle(space.begin(), space.end(), engine);
 		std::shuffle(space_opponent.begin(),space_opponent.end(),engine);
-
-		node_state.clear();
-		for(auto it:space) node_state[it]=std::make_pair(0,0);
 
 		action::place best_move;		
 		
@@ -1514,7 +1509,5 @@ private:
 
 	int use_pns_threshold=0x3f3f3f3f;
 	int use_pns_threshold_opponent=0x3f3f3f3f;
-	int time_control=500;
 	int step_cnt=0;
-	bool down=false;
 };
