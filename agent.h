@@ -1339,32 +1339,154 @@ private:
 class white_player : public random_agent {
 public:
 	white_player(const std::string& args = "") : random_agent("name=random role=unknown " + args),
-		space(board::size_x * board::size_y), who(board::empty) {
+		space(board::size_x * board::size_y),space_opponent(board::size_x * board::size_y), who(board::empty) {
 		if (name().find_first_of("[]():; ") != std::string::npos)
 			throw std::invalid_argument("invalid name: " + name());
-		if (role() == "black") who = board::black;
-		if (role() == "white") who = board::white;
+		if (role() == "black"){
+			who = board::black;
+			opponent = board::white;
+		}
+		if (role() == "white"){
+			who = board::white;
+			opponent = board::black;
+		}
 		if (who == board::empty)
 			throw std::invalid_argument("invalid role: " + role());
-		for (size_t i = 0; i < space.size(); i++)
+		for (size_t i = 0; i < space.size(); i++){
 			space[i] = action::place(i, who);
+			space1.push_back(action::place(i,who));
+			space_opponent[i] = action::place(i, opponent);
+			space_opponent1.push_back(action::place(i,opponent));
+		}
+	}
+
+	struct tree_node{
+		tree_node* next[100]={nullptr};
+		int win_cnt=0;
+		int game_cnt=0;
+		board b;
+		board::piece_type w;
+		action::place pos;
+		int pn_num=1000;
+		int dn_num=1000;
+		tree_node(){}
+		tree_node(board b,board::piece_type w):b(b),w(w){}
+		tree_node(board b,board::piece_type w,action::place pos):b(b),w(w),pos(pos){}
+		bool is_leaf(){
+			bool t=true;
+			for(int i=0;i<100;i++){
+				if(next[i]) t=false; 
+			}
+			return t;
+		}
+	};
+
+	tree_node pn_dfs(tree_node* now){
+		tree_node ret;
+		int p,d;
+		if(now->w==who){
+			int i=0;
+			p=0x3f3f3f3f;
+			d=0;
+			for(auto it:space){
+				board b_now=now->b;
+				if(it.apply(b_now)==board::legal){
+					now->next[i]=new tree_node(b_now,opponent,it);
+					tree_node r=pn_dfs(now->next[i]);
+					i++;
+					p=std::min(p,r.pn_num);
+					d=std::max(d,d+r.dn_num);
+					if(p==0||d==0x3f3f3f3f) break;
+				}
+			}		
+		}
+		else{
+			int i=0;
+			p=0;
+			d=0x3f3f3f3f;
+			for(auto it:space_opponent){
+				board b_now=now->b;
+				if(it.apply(b_now)==board::legal){
+					now->next[i]=new tree_node(b_now,who,it);
+					tree_node r=pn_dfs(now->next[i]);
+					i++;
+					p=std::max(p,p+r.pn_num);
+					d=std::min(d,r.dn_num);
+					if(p==0x3f3f3f3f||d==0) break;
+				}
+			}
+		}
+		now->pn_num=p;
+		now->dn_num=d;
+		ret.pn_num=p;
+		ret.dn_num=d;
+		return ret;
+	}
+
+	void pn_search(){
+		pn_dfs(root);
+	}
+
+	void init(const board& state,board::piece_type w){
+		std::queue<tree_node *> q;
+		if(root) q.push(root);
+		while(q.size()!=0){
+			tree_node* now=q.front();
+			q.pop();
+			for(int i=0;i<100;i++) if(now->next[i]) q.push(now->next[i]);
+			free(now);
+		}
+		root=new tree_node(state,w);
+	}
+
+	virtual void open_episode(const std::string& flag = "") {
+		step_cnt=0;
+		use_pns_threshold=0x3f3f3f3f;
+		use_pns_threshold_opponent=0x3f3f3f3f;
+		time_control=500;
+		down=false;
 	}
 
 	virtual action take_action(const board& state) {
+
 		std::shuffle(space.begin(), space.end(), engine);
+		std::shuffle(space_opponent.begin(),space_opponent.end(),engine);
+
+		node_state.clear();
+		for(auto it:space) node_state[it]=std::make_pair(0,0);
+
+		action::place best_move;		
 		
+		init(state,who);
+		step_cnt++;
+		
+		if(step_cnt>29){
+			pn_search();
+			for(int i=0;i<100;i++){
+				board t=root->b;
+				if(root->next[i]&&root->next[i]->pos.apply(t)==board::legal){
+					if(root->next[i]->pn_num==0){
+						//std::cout << "has_ans" << '\n';
+						best_move=root->next[i]->pos;
+						return best_move;
+						break;
+					}
+					else{best_move=root->next[i]->pos;}
+				}
+			}
+		}
+
 		//for(auto it:space) std::cout << it << '\n';
 		board m=state;
 		//std::cout << "_______________________" << '\n';
 		//std::cout << m << '\n';
+
 		m.reflect_horizontal();
 		m.reflect_vertical();
 		for(int i=0;i<81;i++){
 			if(state(i)==board::piece_type::empty && m(i)!=board::piece_type::empty){
-				//std::cout << action::place(i,who);
 				return action::place(i,who);
 			}
-
 		}
 		//for(int i=0;i<81;i++) std::cout << m(i) << " ";
 		//std::cout << '\n';
@@ -1382,5 +1504,17 @@ public:
 
 private:
 	std::vector<action::place> space;
+	std::vector<action::place> space_opponent;
+	std::vector<action::place> space1;
+	std::vector<action::place> space_opponent1;
 	board::piece_type who;
+	board::piece_type opponent;
+	std::map<action::place,std::pair<int,int>> node_state;
+	tree_node *root=nullptr;
+
+	int use_pns_threshold=0x3f3f3f3f;
+	int use_pns_threshold_opponent=0x3f3f3f3f;
+	int time_control=500;
+	int step_cnt=0;
+	bool down=false;
 };

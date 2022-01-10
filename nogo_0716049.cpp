@@ -63,8 +63,8 @@ int main(int argc, const char* argv[]) {
 		summary |= stat.is_finished();
 	}
 
-	//random_player black("name=black " + black_args + " role=black");
-	mtcs_uct_rave_pn_player black("name=black " + black_args + " role=black");
+	random_player black("name=black " + black_args + " role=black");
+	//mtcs_uct_rave_pn_player black("name=black " + black_args + " role=black");
 	white_player white("name=white " + white_args + " role=white");
 	//mtcs_uct_player black("name=black " + black_args + " role=black");
 	//mtcs_uct_player white("name=white " + white_args + " role=white");
@@ -89,7 +89,7 @@ int main(int argc, const char* argv[]) {
 			}
 			agent& win = game.last_turns(black, white);
 			stat.close_episode(win.name());
-			std::cout << "finish one game" << '\n';
+			//std::cout << "finish one game" << '\n';
 			black.close_episode(win.name());
 			white.close_episode(win.name());
 		}
