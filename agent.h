@@ -916,7 +916,7 @@ public:
 		}
 		else{
 			pn_search();
-			std::cout << "pn_num: " << root->pn_num << '\n';
+			//std::cout << "pn_num: " << root->pn_num << '\n';
 			for(int i=0;i<100;i++){
 				board t=root->b;
 				if(root->next[i]&&root->next[i]->pos.apply(t)==board::legal){
@@ -1336,3 +1336,51 @@ private:
 	int step_cnt=0;
 };
 
+class white_player : public random_agent {
+public:
+	white_player(const std::string& args = "") : random_agent("name=random role=unknown " + args),
+		space(board::size_x * board::size_y), who(board::empty) {
+		if (name().find_first_of("[]():; ") != std::string::npos)
+			throw std::invalid_argument("invalid name: " + name());
+		if (role() == "black") who = board::black;
+		if (role() == "white") who = board::white;
+		if (who == board::empty)
+			throw std::invalid_argument("invalid role: " + role());
+		for (size_t i = 0; i < space.size(); i++)
+			space[i] = action::place(i, who);
+	}
+
+	virtual action take_action(const board& state) {
+		std::shuffle(space.begin(), space.end(), engine);
+		
+		//for(auto it:space) std::cout << it << '\n';
+		board m=state;
+		//std::cout << "_______________________" << '\n';
+		//std::cout << m << '\n';
+		m.reflect_horizontal();
+		m.reflect_vertical();
+		for(int i=0;i<81;i++){
+			if(state(i)==board::piece_type::empty && m(i)!=board::piece_type::empty){
+				//std::cout << action::place(i,who);
+				return action::place(i,who);
+			}
+
+		}
+		//for(int i=0;i<81;i++) std::cout << m(i) << " ";
+		//std::cout << '\n';
+		//std::cout << m << '\n';
+		//std::cout << "_______________________" << '\n';
+		/*
+		for (const action::place& move : space) {
+			board after = state;
+			if (move.apply(after) == board::legal)
+				return move;
+		}
+		*/
+		return action();
+	}
+
+private:
+	std::vector<action::place> space;
+	board::piece_type who;
+};
