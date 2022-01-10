@@ -65,8 +65,8 @@ int main(int argc, const char* argv[]) {
 
 	//random_player black("name=black " + black_args + " role=black");
 	black_player black("name=black " + black_args + " role=black");
-	//white_player white("name=white " + white_args + " role=white");
-	random_player white("name=white " + white_args + " role=white");
+	white_player white("name=white " + white_args + " role=white");
+	//random_player white("name=white " + white_args + " role=white");
 	//mtcs_uct_player black("name=black " + black_args + " role=black");
 	//mtcs_uct_player white("name=white " + white_args + " role=white");
 	//mtcs_uct_rave_player white("name=white " + white_args + " role=white");

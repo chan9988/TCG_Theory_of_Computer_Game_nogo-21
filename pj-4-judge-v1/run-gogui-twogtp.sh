@@ -7,12 +7,12 @@ P1W='./nogo --shell --name="Hollow-White" --white="mcts T=1000"'
 P2B='./nogo-judge --shell --name="Judge-Weak-Black" --black="weak"'
 P2W='./nogo-judge --shell --name="Judge-Weak-White" --white="weak"'
 # commands for remote player 2
-#P2B="gogui-client tcglinux1 10000"
-#P2W="gogui-client tcglinux1 10000"
+P2B="gogui-client tcglinux10.cs.nctu.edu.tw 30000"
+P2W="gogui-client tcglinux10.cs.nctu.edu.tw 30000"
 
 # other settings
 games=${1:-10} # total games to play
-timelimit=36 # total thinking time in second
+timelimit=300 # total thinking time in second
 configs="-size 9 -komi 0 -auto -games $((games/2)) -verbose" # gogui-twogtp
 
 # set up environment

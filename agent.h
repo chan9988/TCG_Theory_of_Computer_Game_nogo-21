@@ -1837,13 +1837,13 @@ public:
 		//std::cout << use_pns_threshold_opponent << '\n';
 
 		for(int i=0;i<time_control;i++) update();
-		if(down==false&&time_control<5000) time_control+=500;
+		if(down==false&&time_control<10000) time_control+=1000;
 		else{
 			down=true;
-			time_control-=200;
+			//time_control-=50;
 		}
 
-		if(step_cnt<15){
+		if(step_cnt<5){
 			board m=state;
 			m.reflect_horizontal();
 			m.reflect_vertical();
